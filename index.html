@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Handpose</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Load the handtrackjs model. -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+<!-- <script src="lib/tfjs-core.min.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+<!-- <script src="lib/tfjs-converter.min.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/handpose"></script>
+<!-- <script src="lib/handpose.min.js"></script> -->
+<script src="HandSVG.js"></script>
+<video muted id="webcam"></video>
+<svg id="hand" xmlns="http://www.w3.org/2000/svg"></svg>
+<!-- Place your code in the script tag below. You can also use an external .js file -->
+<script>
+const webcam = document.querySelector('#webcam');
+let model, handSVG, w, h;
+async function renderPredictions() {
+  requestAnimationFrame(renderPredictions);
+  const predictions = await model.estimateHands(webcam);
+  if (predictions.length > 0) {
+    if(!handSVG) {
+      handSVG = new HandSVG({w, h, id: 'hand'});
+      return;
+    }
+    handSVG.render(predictions[0]);
+  }
+}
+async function main() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    webcam.srcObject = stream;
+    await new Promise(function(res) {
+      webcam.onloadedmetadata = function() {
+        w = webcam.videoWidth;
+        h = webcam.videoHeight;
+        console.log('stream loaded');
+        res();
+      }
+    });
+    
+    webcam.height = h;
+    webcam.width = w;
+    webcam.setAttribute('autoplay', true);
+    webcam.setAttribute('muted', true);
+    webcam.setAttribute('playsinline', true);
+    webcam.play();
+    console.log('stream playing');
+    // Load the MediaPipe facemesh model.
+    model = await handpose.load({
+      maxContinuousChecks: 5,
+      detectionConfidence: 0.8,
+      iouThreshold: 0.3,
+      scoreThreshold: 0.75
+    });
+    console.log('model loaded');
+    renderPredictions();
+  } catch(e) {
+    console.error(e);
+  }
+}
+main();
+  
+</script>
+</body>
+</html>
